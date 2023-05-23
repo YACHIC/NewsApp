@@ -8,7 +8,7 @@
 import UIKit
 import SafariServices
 
-class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate {
 
     
     // TableView
@@ -23,6 +23,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         return table
     }()
     
+    private var searchVC = UISearchController(searchResultsController: nil)
     private var articles = [Article]()
     private var viewModels = [NewsTableViewCellViewModel]()
 
@@ -37,12 +38,18 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         view.backgroundColor = .systemBackground
         
         fetchTopStories()
+        createSearchBar()
         
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         tableView.frame = view.bounds
+    }
+    
+    private func createSearchBar(){
+        navigationItem.searchController = searchVC
+        searchVC.searchBar.delegate = self
     }
     
     private func fetchTopStories(){
@@ -60,6 +67,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
                 
                 DispatchQueue.main.sync {
                     self?.tableView.reloadData()
+                    self?.searchVC.dismiss(animated: true ,completion: nil)
                 }
                 
                 break
@@ -112,6 +120,43 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         return 150
     }
     
+    
+    //
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let text = searchBar.text, !text.isEmpty else{
+            return
+        }
+        
+        APICaller.shared.search(with: text){ [weak self] result in
+            switch result{
+                case .success(let articles):
+                
+                    self?.articles = articles
+                    self?.viewModels = articles.compactMap({
+                        NewsTableViewCellViewModel(title: $0.title,
+                                                   subtitle: $0.description ?? "No Description",
+                                                   imageURL: URL(string: $0.urlToImage ?? "")
+                        )
+                    })
+                
+                DispatchQueue.main.sync {
+                    self?.tableView.reloadData()
+                }
+                
+                
+                
+                case .failure(let error):
+                    print(error)
+                
+                
+                
+            }
+            
+        }
+        
+        print(text)
+    }
 
 
 
